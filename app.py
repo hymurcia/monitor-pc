@@ -5,6 +5,7 @@ from datetime import datetime
 import time
 import os
 from dotenv import load_dotenv
+from plyer import notification
 
 # Load environment variables
 load_dotenv()
@@ -42,9 +43,31 @@ def get_disk_path():
         return 'C:/'
     return '/'
 
+def send_notification(title, message):
+    """Send a desktop notification if cooldown has passed."""
+    global _last_notification_time
+    current_time = time.time()
+    
+    if current_time - _last_notification_time > NOTIFICATION_COOLDOWN:
+        try:
+            notification.notify(
+                title=title,
+                message=message,
+                app_name='Monitor de PC',
+                timeout=10  # seconds
+            )
+            _last_notification_time = current_time
+            logging.info(f"Notification sent: {title} - {message}")
+        except Exception as e:
+            logging.error(f"Failed to send notification: {e}")
+
 # Global variables for disk I/O tracking
 _last_io_counters = None
 _last_io_time = None
+
+# Global variable for notification cooldown
+_last_notification_time = 0
+NOTIFICATION_COOLDOWN = 60  # Seconds between notifications
 
 @app.route('/')
 def index():
@@ -103,6 +126,11 @@ def data():
         # Log high usage based on thresholds
         if cpu_percent > THRESHOLD_CRITICAL or ram_percent > THRESHOLD_CRITICAL or disk_space_percent > THRESHOLD_CRITICAL:
             logging.warning(f"CRITICAL usage detected - CPU: {cpu_percent}%, RAM: {ram_percent}%, DISK: {disk_space_percent}%")
+            # Send desktop notification for critical usage
+            send_notification(
+                "⚠️ Alerta Crítica de Recursos",
+                f"CPU: {cpu_percent:.1f}% | RAM: {ram_percent:.1f}% | Disco: {disk_space_percent:.1f}%"
+            )
         elif cpu_percent > THRESHOLD_WARNING or ram_percent > THRESHOLD_WARNING or disk_space_percent > THRESHOLD_WARNING:
             logging.info(f"High usage detected - CPU: {cpu_percent}%, RAM: {ram_percent}%, DISK: {disk_space_percent}%")
         
