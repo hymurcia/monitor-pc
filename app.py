@@ -22,12 +22,12 @@ THRESHOLD_WARNING = int(os.getenv('THRESHOLD_WARNING', 80))
 THRESHOLD_CRITICAL = int(os.getenv('THRESHOLD_CRITICAL', 90))
 LOG_FILE = os.getenv('LOG_FILE', 'system_monitor.log')
 
-# Configure logging
+# Configure logging with UTF-8 encoding for emojis
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(LOG_FILE),
+        logging.FileHandler(LOG_FILE, encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
