@@ -4,112 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monitor de PC</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #eef1f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            color: #444;
-            background-image: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        }
-        .container {
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            width: 90%;
-            max-width: 550px;
-            box-sizing: border-box;
-        }
-        h1 {
-            color: #3f51b5;
-            margin-bottom: 30px;
-            font-size: 2.2em;
-            font-weight: 600;
-        }
-        .metric {
-            margin-bottom: 25px;
-            font-size: 1.15em;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            width: 100%;
-        }
-        .metric-label {
-            font-weight: bold;
-            color: #555;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-        }
-        .metric-value {
-            font-weight: 600;
-        }
-        .progress-bar {
-            width: 100%;
-            background-color: #e0e7ee;
-            border-radius: 8px;
-            height: 25px;
-            overflow: hidden;
-            margin-top: 5px;
-        }
-        .progress {
-            height: 100%;
-            width: 0%; 
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            color: white;
-            padding-right: 8px;
-            box-sizing: border-box;
-            transition: width 0.8s ease-in-out, background-color 0.3s ease-in-out;
-            font-weight: bold;
-            font-size: 0.9em;
-        }
-        /* Default colors based on level */
-        .progress.level-low { background-color: #28a745; } /* Green */
-        .progress.level-medium { background-color: #ffc107; } /* Yellow */
-        .progress.level-high { background-color: #ff9800; } /* Orange */
-        .progress.level-critical { background-color: #f44336; } /* Red */
-        
-        .status-bar {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
-            font-size: 0.9em;
-            color: #666;
-        }
-        .chart-container {
-            margin-top: 30px;
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-        }
-        .alert {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: #f44336;
-            color: white;
-            padding: 15px 25px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            display: none;
-            z-index: 1000;
-            animation: slideIn 0.3s ease-out;
-        }
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="container">
@@ -134,7 +29,7 @@
                 <span>Actividad de Disco:</span> <span id="disk-value" class="metric-value">0.0%</span>
             </div>
             <div class="progress-bar"><div id="disk-progress" class="progress"></div></div>
-            <div style="font-size: 0.8em; color: #888; margin-top: 5px;">
+            <div class="disk-space-info">
                 Espacio usado: <span id="disk-space-value">{{ "%.1f"|format(disk_percent) }}%</span>
             </div>
         </div>
@@ -155,149 +50,12 @@
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        const maxDataPoints = 60;
-        const history = { cpu: [], ram: [], disk: [], labels: [] };
-        let chartInstance = null;
-
-        function getLevelClass(value) {
-            if (value < 50) return 'level-low';
-            if (value < 70) return 'level-medium';
-            if (value < 90) return 'level-high';
-            return 'level-critical';
-        }
-
-        function updateProgress(id, value) {
-            const bar = document.getElementById(id);
-            const displayValue = value.toFixed(1);
-            bar.style.width = displayValue + '%';
-            bar.textContent = displayValue + '%';
-            
-            const levelClass = getLevelClass(value);
-            bar.className = `progress ${levelClass}`;
-            
-            const metricValueSpan = document.getElementById(id.replace('-progress', '-value'));
-            if (metricValueSpan) {
-                metricValueSpan.textContent = displayValue + '%';
-                // Add a visual flash to indicate update
-                metricValueSpan.style.transition = 'color 0.2s';
-                metricValueSpan.style.color = levelClass === 'level-critical' ? '#f44336' : 
-                                              levelClass === 'level-high' ? '#ff9800' : 
-                                              levelClass === 'level-medium' ? '#ffc107' : '#28a745';
-            }
-        }
-
-        function showAlertIfNeeded(cpu, ram, disk) {
-            const alertBox = document.getElementById('alert-box');
-            const isCritical = cpu > 90 || ram > 90 || disk > 90;
-            
-            if (isCritical) {
-                alertBox.style.display = 'block';
-                setTimeout(() => { alertBox.style.display = 'none'; }, 3000);
-            }
-        }
-
-        function initChart() {
-            const ctx = document.getElementById('historyChart').getContext('2d');
-            chartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: history.labels,
-                    datasets: [
-                        { label: 'CPU %', data: history.cpu, borderColor: '#ff9800', backgroundColor: 'rgba(255, 152, 0, 0.1)', borderWidth: 2, tension: 0.4 },
-                        { label: 'RAM %', data: history.ram, borderColor: '#2196f3', backgroundColor: 'rgba(33, 150, 243, 0.1)', borderWidth: 2, tension: 0.4 },
-                        { label: 'Disco %', data: history.disk, borderColor: '#f44336', backgroundColor: 'rgba(244, 67, 54, 0.1)', borderWidth: 2, tension: 0.4 }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    scales: { y: { beginAtZero: true, max: 100, ticks: { color: '#666' } }, x: { ticks: { color: '#666' } } },
-                    plugins: { legend: { position: 'bottom', labels: { color: '#666' } } },
-                    animation: { duration: 300 }
-                }
-            });
-        }
-
-        function updateChart(cpu, ram, disk) {
-            const now = new Date().toLocaleTimeString();
-            history.cpu.push(cpu);
-            history.ram.push(ram);
-            history.disk.push(disk);
-            history.labels.push(now);
-            
-            if (history.cpu.length > maxDataPoints) {
-                history.cpu.shift();
-                history.ram.shift();
-                history.disk.shift();
-                history.labels.shift();
-            }
-            
-            if (chartInstance) chartInstance.update();
-        }
-
-        async function fetchData() {
-            try {
-                const response = await fetch('/data');
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-                
-                // Log values to console for debugging
-                console.log('Fetched data:', data);
-                
-                updateProgress('cpu-progress', data.cpu);
-                updateProgress('ram-progress', data.ram);
-                updateProgress('disk-progress', data.disk_activity); // Use activity for the bar
-                
-                // Update disk space text separately
-                document.getElementById('disk-space-value').textContent = data.disk_space.toFixed(1) + '%';
-                
-                // For the chart, we might want to show disk activity or space? 
-                // Let's show disk activity in the chart for now, or create a 4th dataset.
-                // To keep it simple, I'll just pass disk_activity to the chart for the 3rd line.
-                // But the chart function expects cpu, ram, disk. 
-                // We can update the chart to show disk activity instead of space.
-                updateChart(data.cpu, data.ram, data.disk_activity);
-                
-                showAlertIfNeeded(data.cpu, data.ram, data.disk_activity);
-                
-                document.getElementById('last-update').textContent = 'Última actualización: ' + new Date().toLocaleTimeString();
-            } catch (error) {
-                console.error("Error fetching data:", error);
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initialize progress bars
-            updateProgress('cpu-progress', {{ cpu_percent }});
-            updateProgress('ram-progress', {{ ram_percent }});
-            updateProgress('disk-progress', 0); // Initial disk activity is 0
-            
-            // Update disk space text
-            document.getElementById('disk-space-value').textContent = "{{ "%.1f"|format(disk_percent) }}%";
-            
-            // Initialize chart data
-            const initialCPU = {{ cpu_percent }};
-            const initialRAM = {{ ram_percent }};
-            const initialDisk = 0; // Start disk activity at 0
-            
-            // Pre-fill history with initial data to show a line immediately
-            for (let i = 0; i < 20; i++) {
-                history.cpu.push(initialCPU);
-                history.ram.push(initialRAM);
-                history.disk.push(initialDisk);
-                history.labels.push(new Date(Date.now() - (20-i)*2000).toLocaleTimeString());
-            }
-            
-            initChart();
-            
-            // Start fetching data every 2 seconds
-            setInterval(fetchData, 2000);
-            
-            // Immediate first fetch to update chart quickly
-            fetchData();
-            
-            document.getElementById('last-update').textContent = 'Última actualización: ' + new Date().toLocaleTimeString();
-        });
+        window.initialData = {
+            cpu: {{ cpu_percent }},
+            ram: {{ ram_percent }},
+            disk: {{ disk_percent }}
+        };
     </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
