@@ -138,8 +138,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initChart();
 
-    // Start fetching data every 2 seconds
-    setInterval(fetchData, 2000);
+    // Start fetching data with the configured interval (default 2000ms)
+    const interval = window.initialData.refreshInterval || 2000;
+    setInterval(fetchData, interval);
 
     // Immediate first fetch to update chart quickly
     fetchData();

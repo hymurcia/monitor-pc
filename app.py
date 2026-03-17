@@ -3,21 +3,40 @@ import psutil
 import logging
 from datetime import datetime
 import time
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
+
+# Configuration from .env file
+HOST = os.getenv('HOST', '127.0.0.1')
+PORT = int(os.getenv('PORT', 5000))
+DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+DISK_PATH = os.getenv('DISK_PATH', 'C:/')
+REFRESH_INTERVAL = int(os.getenv('REFRESH_INTERVAL', 2))
+THRESHOLD_WARNING = int(os.getenv('THRESHOLD_WARNING', 80))
+THRESHOLD_CRITICAL = int(os.getenv('THRESHOLD_CRITICAL', 90))
+LOG_FILE = os.getenv('LOG_FILE', 'system_monitor.log')
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('system_monitor.log'),
+        logging.FileHandler(LOG_FILE),
         logging.StreamHandler()
     ]
 )
 
 def get_disk_path():
-    """Get the primary disk path for different OS."""
+    """Get the disk path from configuration or default."""
+    # If DISK_PATH is set in .env, use it. Otherwise, detect OS.
+    if DISK_PATH:
+        return DISK_PATH
+    
     import platform
     if platform.system() == 'Windows':
         return 'C:/'
@@ -39,7 +58,8 @@ def index():
         return render_template('index.html', 
                                cpu_percent=cpu_percent, 
                                ram_percent=ram_percent, 
-                               disk_percent=disk_percent)
+                               disk_percent=disk_percent,
+                               refresh_interval=REFRESH_INTERVAL * 1000) # Convert to milliseconds
     except Exception as e:
         logging.error(f"Error in index route: {e}")
         return render_template('error.html', error=str(e))
@@ -80,9 +100,11 @@ def data():
         _last_io_counters = current_io_counters
         _last_io_time = current_time
         
-        # Log high usage
-        if cpu_percent > 90 or ram_percent > 90 or disk_space_percent > 90:
-            logging.warning(f"High usage detected - CPU: {cpu_percent}%, RAM: {ram_percent}%, DISK: {disk_space_percent}%")
+        # Log high usage based on thresholds
+        if cpu_percent > THRESHOLD_CRITICAL or ram_percent > THRESHOLD_CRITICAL or disk_space_percent > THRESHOLD_CRITICAL:
+            logging.warning(f"CRITICAL usage detected - CPU: {cpu_percent}%, RAM: {ram_percent}%, DISK: {disk_space_percent}%")
+        elif cpu_percent > THRESHOLD_WARNING or ram_percent > THRESHOLD_WARNING or disk_space_percent > THRESHOLD_WARNING:
+            logging.info(f"High usage detected - CPU: {cpu_percent}%, RAM: {ram_percent}%, DISK: {disk_space_percent}%")
         
         return jsonify(
             cpu=cpu_percent, 
@@ -95,4 +117,4 @@ def data():
         return jsonify(error=str(e)), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host=HOST, port=PORT, debug=DEBUG)
