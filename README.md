@@ -6,7 +6,7 @@ Una aplicación web desarrollada con **Flask** y **psutil** para monitorear en t
 
 ## ✨ Características
 
-- **Interfaz Web en Tiempo Real:** Dashboard visual con actualización cada 2 segundos.
+- **Interfaz Web en Tiempo Real:** Dashboard visual con actualización configurable (por defecto 2 segundos).
 - **Gráficos Históricos:** Gráficos de líneas interactivos que muestran la tendencia del uso de recursos (usando Chart.js).
 - **Monitoreo Detallado:**
   - **CPU:** Porcentaje de uso total.
@@ -14,9 +14,10 @@ Una aplicación web desarrollada con **Flask** y **psutil** para monitorear en t
   - **Disco:**
     - **Actividad (Rendimiento):** Velocidad de lectura/escritura actual (mostrada en la barra de progreso).
     - **Espacio Utilizado:** Capacidad de almacenamiento ocupada (mostrada en texto).
-- **Alertas Visuales:** Notificaciones emergentes cuando los recursos superan el 90%.
+- **Notificaciones de Escritorio:** Alertas visuales en el sistema operativo cuando los recursos superan el umbral crítico (usando `plyer`).
 - **Colores Dinámicos:** Las barras de progreso cambian de color (verde → amarillo → naranja → rojo) según el nivel de carga.
-- **Logging:** Registra eventos de alta utilización en `system_monitor.log`.
+- **Configuración Flexible:** Variables de entorno personalizables (`.env`) para puerto, umbrales, rutas de disco, etc.
+- **Logging:** Registra eventos de alta utilización en `system_monitor.log` con codificación UTF-8.
 
 ## 📋 Requisitos Previos
 
@@ -49,30 +50,38 @@ Una aplicación web desarrollada con **Flask** y **psutil** para monitorear en t
 ## ▶️ Ejecución
 
 1.  Asegúrate de que el entorno virtual esté activado (si lo creaste).
-2.  Ejecuta la aplicación:
+2.  Ejecuta la aplicación usando el script de inicio:
     ```bash
-    python app.py
+    python run.py
     ```
 3.  Abre tu navegador y ve a:
     ```
     http://127.0.0.1:5000
     ```
+    
+**Configuración:**
+Puedes modificar el comportamiento de la aplicación editando el archivo `.env` (por ejemplo, cambiar el puerto, el intervalo de actualización o los umbrales de alerta).
 
 ## 📁 Estructura del Proyecto
 
 ```
 monitor_pc/
 ├── app.py                  # Código principal del servidor Flask
+├── run.py                  # Script de inicio simplificado
+├── .env                    # Configuración personalizable (no subir a git)
 ├── requirements.txt        # Dependencias del proyecto
 ├── system_monitor.log      # Archivo de registro de eventos
+├── static/
+│   ├── style.css           # Estilos CSS separados
+│   └── script.js           # Lógica JavaScript separada
 ├── templates/
-│   └── index.html          # Plantilla HTML con CSS y JavaScript
+│   └── index.html          # Plantilla HTML
 └── README.md               # Este archivo
 ```
 
 ## 🛠️ Tecnologías Utilizadas
 
-- **Backend:** Python, Flask, psutil.
+- **Backend:** Python, Flask, psutil, python-dotenv, plyer.
 - **Frontend:** HTML5, CSS3, JavaScript (Vanilla).
 - **Gráficos:** Chart.js (cargado vía CDN).
 
@@ -85,10 +94,11 @@ monitor_pc/
         *   `ram`: Porcentaje de RAM.
         *   `disk_space`: Porcentaje de espacio ocupado en disco.
         *   `disk_activity`: Porcentaje de actividad (rendimiento) del disco.
+    *   **Notificaciones:** Si los recursos superan el umbral crítico (definido en `.env`), se envía una notificación de escritorio usando `plyer`.
 2.  **Cliente (Navegador):**
-    *   JavaScript solicita datos a `/data` cada 2 segundos.
+    *   JavaScript solicita datos a `/data` cada X segundos (configurable en `.env`).
     *   Actualiza las barras de progreso, el texto y el gráfico de Chart.js.
-    *   Muestra alertas visuales si algún recurso supera el 90%.
+    *   Muestra alertas visuales en el navegador si algún recurso supera el umbral.
 
 ## ⚠️ Notas
 
